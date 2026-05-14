@@ -1,0 +1,29 @@
+# Internal / non-publishable documents (plans, drafts, working notes)
+docs/internal/
+
+# Claude Code agent instructions (local, not for publication)
+CLAUDE.md
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Build output
+target/
+build/
+out/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+logs/

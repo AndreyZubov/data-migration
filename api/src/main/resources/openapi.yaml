@@ -1,0 +1,585 @@
+openapi: 3.0.3
+info:
+  title: Salesforce Data Migration API
+  description: |
+    Public REST contract for the Salesforce Data Migration service. Covers job lifecycle,
+    Salesforce org connections, reusable templates, field mappings and event streaming.
+  version: 0.1.0
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: /api/v1
+    description: Default base path
+
+tags:
+  - name: jobs
+    description: Migration job lifecycle
+  - name: orgs
+    description: Salesforce org connections
+  - name: templates
+    description: Reusable migration templates
+  - name: events
+    description: Server-sent job lifecycle events
+
+paths:
+  /jobs:
+    get:
+      tags: [jobs]
+      operationId: listJobs
+      summary: List migration jobs
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/JobStatus'
+      responses:
+        '200':
+          description: A page of migration jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationJobPage'
+    post:
+      tags: [jobs]
+      operationId: createJob
+      summary: Create and enqueue a migration job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMigrationJobRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationJob'
+
+  /jobs/{id}:
+    get:
+      tags: [jobs]
+      operationId: getJob
+      summary: Get a migration job by id
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: The migration job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [jobs]
+      operationId: cancelJob
+      summary: Cancel a running or queued job
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Cancelled
+
+  /jobs/{id}/progress:
+    get:
+      tags: [jobs]
+      operationId: getJobProgress
+      summary: Get the latest progress snapshot
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Job progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobProgress'
+
+  /jobs/{id}/errors:
+    get:
+      tags: [jobs]
+      operationId: listJobErrors
+      summary: List rejected rows for a job
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Page of error rows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorRecordPage'
+
+  /orgs:
+    get:
+      tags: [orgs]
+      operationId: listOrgs
+      summary: List connected Salesforce orgs
+      responses:
+        '200':
+          description: List of orgs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Org'
+    post:
+      tags: [orgs]
+      operationId: connectOrg
+      summary: Connect a new Salesforce org
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectOrgRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Org'
+
+  /orgs/{id}:
+    get:
+      tags: [orgs]
+      operationId: getOrg
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: The org
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Org'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [orgs]
+      operationId: disconnectOrg
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Disconnected
+
+  /orgs/{id}/test:
+    post:
+      tags: [orgs]
+      operationId: testOrgConnection
+      summary: Verify connectivity for an org
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgConnectionTest'
+
+  /templates:
+    get:
+      tags: [templates]
+      operationId: listTemplates
+      responses:
+        '200':
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MigrationTemplate'
+    post:
+      tags: [templates]
+      operationId: createTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MigrationTemplate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationTemplate'
+
+  /templates/{id}:
+    get:
+      tags: [templates]
+      operationId: getTemplate
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Template
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationTemplate'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [templates]
+      operationId: updateTemplate
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MigrationTemplate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationTemplate'
+    delete:
+      tags: [templates]
+      operationId: deleteTemplate
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '204':
+          description: Deleted
+
+  /events/jobs/{id}:
+    get:
+      tags: [events]
+      operationId: streamJobEvents
+      summary: Stream lifecycle events for a job as Server-Sent Events
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/JobEvent'
+
+components:
+  parameters:
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    SizeParam:
+      in: query
+      name: size
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    ProblemDetail:
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+
+    JobStatus:
+      type: string
+      enum: [PENDING, QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED]
+
+    Operation:
+      type: string
+      enum: [INSERT, UPDATE, UPSERT, DELETE, HARD_DELETE, QUERY, QUERY_ALL]
+
+    OrgStatus:
+      type: string
+      enum: [CONNECTED, DISCONNECTED, TOKEN_EXPIRED, ERROR]
+
+    TransformType:
+      type: string
+      enum: [CONCAT, SPLIT, LOOKUP, REGEX]
+
+    TransformStep:
+      type: object
+      required: [type]
+      properties:
+        type:
+          $ref: '#/components/schemas/TransformType'
+        params:
+          type: object
+          additionalProperties: true
+
+    FieldMapping:
+      type: object
+      required: [sourceField, targetField]
+      properties:
+        sourceField:
+          type: string
+        targetField:
+          type: string
+        transform:
+          $ref: '#/components/schemas/TransformStep'
+        defaultValue:
+          nullable: true
+
+    Org:
+      type: object
+      required: [id, name, instanceUrl, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        instanceUrl:
+          type: string
+          format: uri
+        clientId:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrgStatus'
+        createdAt:
+          type: string
+          format: date-time
+
+    ConnectOrgRequest:
+      type: object
+      required: [name, instanceUrl, clientId, clientSecret]
+      properties:
+        name:
+          type: string
+        instanceUrl:
+          type: string
+          format: uri
+        clientId:
+          type: string
+        clientSecret:
+          type: string
+          format: password
+        refreshToken:
+          type: string
+          format: password
+
+    OrgConnectionTest:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        latencyMs:
+          type: integer
+          format: int64
+
+    MigrationTemplate:
+      type: object
+      required: [name, targetObject, mappings]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        targetObject:
+          type: string
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldMapping'
+
+    MigrationJob:
+      type: object
+      required: [id, name, targetOrgId, operation, targetObject, status, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        sourceOrgId:
+          type: string
+        targetOrgId:
+          type: string
+        templateId:
+          type: string
+        operation:
+          $ref: '#/components/schemas/Operation'
+        targetObject:
+          type: string
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        priority:
+          type: integer
+          format: int32
+          default: 0
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    MigrationJobPage:
+      type: object
+      required: [content, totalElements, page, size]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/MigrationJob'
+        totalElements:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+
+    CreateMigrationJobRequest:
+      type: object
+      required: [name, targetOrgId, operation, targetObject]
+      properties:
+        name:
+          type: string
+        sourceOrgId:
+          type: string
+        targetOrgId:
+          type: string
+        templateId:
+          type: string
+        operation:
+          $ref: '#/components/schemas/Operation'
+        targetObject:
+          type: string
+        priority:
+          type: integer
+          format: int32
+        inputFileUrl:
+          type: string
+          format: uri
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldMapping'
+
+    JobProgress:
+      type: object
+      required: [jobId, totalRecords, processedRecords, succeededRecords, failedRecords, updatedAt]
+      properties:
+        jobId:
+          type: string
+        totalRecords:
+          type: integer
+          format: int64
+        processedRecords:
+          type: integer
+          format: int64
+        succeededRecords:
+          type: integer
+          format: int64
+        failedRecords:
+          type: integer
+          format: int64
+        updatedAt:
+          type: string
+          format: date-time
+
+    ErrorRecord:
+      type: object
+      required: [jobId, rowNumber, errorCode, message]
+      properties:
+        jobId:
+          type: string
+        rowNumber:
+          type: integer
+          format: int64
+        field:
+          type: string
+        errorCode:
+          type: string
+        message:
+          type: string
+        rowSnapshot:
+          type: object
+          additionalProperties: true
+
+    ErrorRecordPage:
+      type: object
+      required: [content, totalElements, page, size]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorRecord'
+        totalElements:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+
+    JobEvent:
+      type: object
+      required: [jobId, type, occurredAt]
+      properties:
+        jobId:
+          type: string
+        type:
+          type: string
+          enum: [STATUS_CHANGED, PROGRESS, ERROR]
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        progress:
+          $ref: '#/components/schemas/JobProgress'
+        message:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
