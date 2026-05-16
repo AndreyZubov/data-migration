@@ -49,6 +49,11 @@
             <artifactId>spring-context</artifactId>
             <version>${spring.version}</version>
         </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -74,7 +79,8 @@
                             <generateApiDocumentation>false</generateApiDocumentation>
                             <generateModelTests>false</generateModelTests>
                             <generateModelDocumentation>false</generateModelDocumentation>
-                            <generateSupportingFiles>false</generateSupportingFiles>
+                            <generateSupportingFiles>true</generateSupportingFiles>
+                            <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
                             <configOptions>
                                 <interfaceOnly>true</interfaceOnly>
                                 <useSpringBoot3>true</useSpringBoot3>
@@ -84,7 +90,7 @@
                                 <dateLibrary>java8</dateLibrary>
                                 <useTags>true</useTags>
                                 <useBeanValidation>true</useBeanValidation>
-                                <skipDefaultInterface>true</skipDefaultInterface>
+                                <skipDefaultInterface>false</skipDefaultInterface>
                             </configOptions>
                         </configuration>
                     </execution>
